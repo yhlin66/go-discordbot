@@ -2,44 +2,11 @@ package controller
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/yhlin66/go-discordbot/api"
 )
-
-type Weather struct {
-	Success string  `json:"success,omitempty"`
-	Records Records `json:"records,omitempty"`
-}
-
-type Parameter struct {
-	ParameterName  string `json:"parameterName,omitempty"`
-	ParameterValue string `json:"parameterValue,omitempty"`
-	ParameterUnit  string `json:"parameterUnit,omitempty"`
-}
-type Time struct {
-	StartTime string    `json:"startTime,omitempty"`
-	EndTime   string    `json:"endTime,omitempty"`
-	Parameter Parameter `json:"parameter,omitempty"`
-}
-type WeatherElement struct {
-	ElementName string `json:"elementName,omitempty"`
-	Time        []Time `json:"time,omitempty"`
-}
-type Location struct {
-	LocationName   string           `json:"locationName,omitempty"`
-	WeatherElement []WeatherElement `json:"weatherElement,omitempty"`
-}
-type Records struct {
-	DatasetDescription string     `json:"datasetDescription,omitempty"`
-	Location           []Location `json:"location,omitempty"`
-}
-
-var DISCORD_TOKEN = os.Getenv("DISCORD_TOKEN")
 
 var tr = map[string]string{
 	"Wx":   "天氣狀況",
@@ -49,34 +16,7 @@ var tr = map[string]string{
 	"PoP":  "降雨機率",
 }
 
-func DiscordBot() {
-
-	dg, err := discordgo.New("Bot " + DISCORD_TOKEN)
-	if err != nil {
-		fmt.Println("error creating discord session ", err)
-		return
-	}
-
-	dg.AddHandler(messageCreate)
-
-	dg.Identify.Intents = discordgo.IntentsGuildMessages
-
-	err = dg.Open()
-	if err != nil {
-		fmt.Println("error opening connection ", err)
-		return
-	}
-	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
-
-	// Cleanly close down the Discord session.
-	dg.Close()
-}
-
-func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func WeatherCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Ignore all messages created by the bot itself
 	// This isn't required in this specific example but it's a good practice.
 	if m.Author.ID == s.State.User.ID {
@@ -84,7 +24,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	fmt.Println(m.Content)
 
-	weather := api.WeatherApi(m)
+	weather := api.WeatherApi(m.Content)
 
 	embed := setWeatherEmbed(&weather)
 

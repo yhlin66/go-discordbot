@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
 )
 
@@ -62,15 +61,14 @@ var (
 	weather Weather
 ) 
 
-
-func WeatherApi(m *discordgo.MessageCreate) Weather {
+func WeatherApi(m string) Weather {
 
 	// If the message is "cityweather" reply with city weather information by api
-	if strings.Contains(m.Content, "weather") {
+	if strings.Contains(m, "weather") {
 		var locationName string
 		var city string = "高雄市"
 		//去掉 weather 
-		r := []rune(strings.TrimSuffix(m.Content, "weather"))
+		r := []rune(strings.TrimSuffix(m, "weather"))
 		//有輸入城市名稱，預設高雄市
 		if len(r) > 0 {
 			// 台 > 臺
