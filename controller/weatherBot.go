@@ -1,18 +1,14 @@
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/yhlin66/go-discordbot/api"
 )
 
 type Weather struct {
@@ -43,24 +39,7 @@ type Records struct {
 	Location           []Location `json:"location,omitempty"`
 }
 
-func (p Parameter) SetContext() string {
-	s := p.ParameterName
-	if p.ParameterValue != "" {
-		s += p.ParameterValue
-	}
-	switch p.ParameterUnit {
-	case "C":
-		s += "°C\n "
-	case "百分比":
-		s += "%\n "
-	default:
-		s += "\n "
-	}
-	return s
-}
-
 var DISCORD_TOKEN = os.Getenv("DISCORD_TOKEN")
-var CWB_TOKEN = os.Getenv("CWB_TOKEN")
 
 var tr = map[string]string{
 	"Wx":   "天氣狀況",
@@ -105,62 +84,19 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	fmt.Println(m.Content)
 
-	// If the message is "ping" reply with "Pong!"
-	if m.Content == "ping" {
-		s.ChannelMessageSend(m.ChannelID, "Pong!")
+	weather := api.WeatherApi(m)
+
+	embed := setWeatherEmbed(&weather)
+
+	st, err := s.ChannelMessageSendEmbed(m.ChannelID, embed)
+	if err != nil {
+		fmt.Println(err)
 	}
-
-	// If the message is "pong" reply with "Ping!"
-	if m.Content == "pong" {
-		s.ChannelMessageSend(m.ChannelID, "Ping!")
-	}
-
-	// If the message is "cityweather" reply with city weather information by api
-	if strings.Contains(m.Content, "weather") {
-		var locationName string
-		var city string = "高雄市"
-		//去掉 weather 
-		r := []rune(strings.TrimSuffix(m.Content, "weather"))
-		//有輸入城市名稱，預設高雄市
-		if len(r) > 0 {
-			// 台 > 臺
-			tai := r[:1]
-			if tai[0] == 21488 {
-				tai[0] = 33274
-			}
-			city = string(r)
-		}
-		locationName = url.QueryEscape(city)
-
-		// http request cwb api
-		res, err := http.Get("https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-C0032-001?Authorization="+ CWB_TOKEN +"&format=JSON&locationName=" + locationName)
-		if err != nil {
-			fmt.Println(err)
-		}
-		defer res.Body.Close()
-
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		//new weather struct
-		var weather Weather
-		// unmarchal json
-		json.Unmarshal([]byte(string(body)), &weather)
-		fmt.Println(weather)
-		embed := setWeatherEmbed(&weather)
-
-		st, err := s.ChannelMessageSendEmbed(m.ChannelID, embed)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(st)
-	}
+	fmt.Println(st)
 
 }
 
-func setWeatherEmbed(weather *Weather) *discordgo.MessageEmbed {
+func setWeatherEmbed(weather *api.Weather) *discordgo.MessageEmbed {
 	//Create a double dimensionate map to storage Embed's fieldContent
 	var fieldContent = make(map[int]map[string]string)
 
