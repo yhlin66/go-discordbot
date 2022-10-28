@@ -62,7 +62,6 @@ var (
 ) 
 
 func WeatherApi(m string) Weather {
-
 	// If the message is "cityweather" reply with city weather information by api
 	if strings.Contains(m, "weather") {
 		var locationName string
